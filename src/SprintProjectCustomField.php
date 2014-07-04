@@ -26,7 +26,7 @@ abstract class SprintProjectCustomField extends PhabricatorProjectCustomField
    * implement PhabricatorStandardCustomFieldInterface
    */
   public function getStandardCustomFieldNamespace() {
-    return 'projects';
+    return 'project';
   }
 
   /**
