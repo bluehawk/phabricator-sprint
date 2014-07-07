@@ -2,7 +2,9 @@
 
 final class BurndownController extends PhabricatorController {
 
+  // Project data
   private $projectID;
+  private $project;
 
   // Start and end date for the sprint
   private $startdate;
@@ -22,20 +24,20 @@ final class BurndownController extends PhabricatorController {
     $viewer = $request->getUser();
 
     // Load the project we're looking at, based on the project ID in the URL.
-    $project = id(new PhabricatorProjectQuery())
+    $this->project = id(new PhabricatorProjectQuery())
       ->setViewer($viewer)
       ->withIDs(array($this->projectID))
       ->executeOne();
-    if (!$project) {
+    if (!$this->project) {
       return new Aphront404Response();
     }
 
     // We need the custom fields so we can pull out the start and end date
     $field_list = PhabricatorCustomField::getObjectFields(
-      $project,
+      $this->project,
       PhabricatorCustomField::ROLE_EDIT);
     $field_list->setViewer($viewer);
-    $field_list->readFieldsFromStorage($project);
+    $field_list->readFieldsFromStorage($this->project);
     $aux_fields = $field_list->getFields();
 
     $this->startdate = idx($aux_fields, 'isdc:sprint:startdate')
@@ -61,7 +63,7 @@ final class BurndownController extends PhabricatorController {
     // have activity in the project period.
     $tasks = id(new ManiphestTaskQuery())
       ->setViewer($viewer)
-      ->withAnyProjects(array($project->getPHID()))
+      ->withAnyProjects(array($this->project->getPHID()))
       ->execute();
 
     // Now load *every transaction* for those tasks. This loads all the
@@ -79,7 +81,7 @@ final class BurndownController extends PhabricatorController {
     // Examine all the transactions and extract "events" out of them. These are
     // times when a task was opened or closed. Make some effort to also track
     // "scope" events (when a task was added or removed from a project).
-    $scope_phids = array($project->getPHID());
+    $scope_phids = array($this->project->getPHID());
     $events = $this->extractEvents($xactions, $scope_phids);
 
     $this->xactions = mpull($xactions, null, 'getPHID');
@@ -93,8 +95,8 @@ final class BurndownController extends PhabricatorController {
 
     $crumbs = $this->buildApplicationCrumbs();
     $crumbs->addTextCrumb(
-      $project->getName(),
-      '/project/view/'.$project->getID());
+      $this->project->getName(),
+      '/project/view/'.$this->project->getID());
     $crumbs->addTextCrumb(pht('Burndown'));
 
     return $this->buildApplicationPage(
@@ -105,7 +107,7 @@ final class BurndownController extends PhabricatorController {
         $events_box,
       ),
       array(
-        'title' => array(pht('Burndown'), $project->getName()),
+        'title' => array(pht('Burndown'), $this->project->getName()),
         'device' => true,
       ));
   }
@@ -121,6 +123,9 @@ final class BurndownController extends PhabricatorController {
    *
    * Then we loop through the days, and sum up the numbers from previous days
    * so the graph makes sense.
+   *
+   * This is all pretty ugly, and could probably be made more robust using
+   * actual objects.
    */
   private function buildBurnDownData($events, $viewer)
   {
@@ -130,11 +135,12 @@ final class BurndownController extends PhabricatorController {
     $interval = new DateInterval('P1D'); // 1 day interval
     $period = new DatePeriod($start, $interval, $end);
     $template = array(
-      'tasks_total' => 0,
-      'tasks_done' => 0,
-      'points_total' => 0,
-      'points_done' => 0,
-      'ideal_points' => 0,
+      'tasks_total'   => 0,
+      'tasks_done'    => 0,
+      'points_total'  => 0,
+      'points_done'   => 0,
+      'points_remain' => 0,
+      'ideal_points'  => 0,
     );
     $dates = array('Start of Sprint' => $template);
     foreach ($period as $day) {
@@ -219,6 +225,16 @@ final class BurndownController extends PhabricatorController {
       $previous = $date;
     }
 
+    // Compute "Points remaining" column
+    foreach ($dates as $date => $data) {
+      $dates[$date]['points_remain'] = $data['points_total']
+        - $data['points_done'];
+    }
+
+    // Compute "Ideal Points remaining" column
+
+
+    // Move the date from the key to being part of the array
     $out = array();
     foreach ($dates as $date => $data)
     {
@@ -238,6 +254,7 @@ final class BurndownController extends PhabricatorController {
           pht('Completed Tasks'),
           pht('Total Points'),
           pht('Completed Points'),
+          pht('Remaining Points'),
           pht('Ideal Points'),
         ))
       ->setColumnClasses(
@@ -258,10 +275,29 @@ final class BurndownController extends PhabricatorController {
 
   private function buildBurnDownChart($data)
   {
+    $data_table = array(array(
+      pht('Date'),
+      pht('Total Tasks'),
+      pht('Completed Tasks'),
+      pht('Total Points'),
+      pht('Completed Points'),
+      pht('Remaining Points'),
+      pht('Ideal Points'),
+    ));
+    foreach($data as $data)
+    {
+      $data_table[] = array_values($data);
+    }
+    // Format the data for the chart
+    $data_table = json_encode($data_table);
+
     // This should probably use celerity and/or javelin
     $box = id(new PHUIObjectBoxView())
-      ->setHeaderText(pht('BURRRNNNN'))
-      ->appendChild(<<<HERE
+      ->setHeaderText(pht('Burndown for '.$this->project->getName()))
+      // Calling phutil_safe_html and passing in <script> tags is a potential
+      // security hole. None of this data is direct user input, so we should
+      // be fine.
+      ->appendChild(phutil_safe_html(<<<HERE
 <script type="text/javascript" src="//www.google.com/jsapi"></script>
 <script type="text/javascript">
   google.load('visualization', '1', {packages: ['corechart']});
@@ -270,25 +306,23 @@ final class BurndownController extends PhabricatorController {
 
   function drawVisualization() {
     // Create and populate the data table.
-    var data = google.visualization.arrayToDataTable([
-      ['Month', 'Bolivia', 'Ecuador', 'Madagascar', 'Papua New Guinea', 'Rwanda', 'Average'],
-      ['2004/05',  165,      938,         522,             998,           450,      614.6],
-      ['2005/06',  135,      1120,        599,             1268,          288,      682],
-      ['2006/07',  157,      1167,        587,             807,           397,      623],
-      ['2007/08',  139,      1110,        615,             968,           215,      609.4],
-      ['2008/09',  136,      691,         629,             1026,          366,      569.6]
-    ]);
+    var data = google.visualization.arrayToDataTable($data_table);
+    //   ['Month', 'Bolivia', 'Ecuador', 'Madagascar', 'Papua New Guinea', 'Rwanda', 'Average'],
+    //   ['2004/05',  165,      938,         522,             998,           450,      614.6],
+    //   ['2005/06',  135,      1120,        599,             1268,          288,      682],
+    //   ['2006/07',  157,      1167,        587,             807,           397,      623],
+    //   ['2007/08',  139,      1110,        615,             968,           215,      609.4],
+    //   ['2008/09',  136,      691,         629,             1026,          366,      569.6]
+    // ]);
 
     // Create and draw the visualization.
     var ac = new google.visualization.ComboChart(document.getElementById('visualization'));
     ac.draw(data, {
-      title : 'Monthly Coffee Production by Country',
-      width: 600,
       height: 400,
-      vAxis: {title: "Cups"},
-      hAxis: {title: "Month"},
-      seriesType: "bars",
-      series: {5: {type: "line"}}
+      vAxis: {title: "Points"},
+      hAxis: {title: "Date"},
+      seriesType: "line",
+      series: {5: {type: "bars"}}
     });
   }
 
@@ -296,7 +330,7 @@ final class BurndownController extends PhabricatorController {
   google.setOnLoadCallback(drawVisualization);
 </script>
 HERE
-        )
+        ))
       ->appendChild(phutil_tag('div',
         array(
           'id' => 'visualization',
