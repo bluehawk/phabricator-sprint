@@ -51,9 +51,9 @@ class BurndownData {
     if (!$start OR !$end)
     {
       // TODO make this show a real error
-      echo "That project is not set up for Burndowns, make sure it has "
-      ."'Sprint' in the name, and then edit it to add the sprint start and "
-      ."end date.";
+      throw new Exception("This project is not set up for Burndowns, make "
+        ."sure it has 'Sprint' in the name, and then edit it to add the sprint "
+        ."start and end date.");
     }
 
     // Load the data for the chart. This approach tries to be simple, but loads
