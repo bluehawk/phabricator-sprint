@@ -21,7 +21,7 @@ class BurndownData {
   // whether it's open or closed. These values change as we progress through
   // time, so that changes to points or status reflect on the graph.
   private $task_points = array();
-  private $task_closed = array();
+  private $task_statuses = array();
 
   // Project associated with this burndown.
   private $project;
@@ -106,10 +106,11 @@ class BurndownData {
     // Build arrays to store current point and closed status of tasks as we
     // progress through time, so that these changes reflect on the graph
     $this->task_points = array();
-    $this->task_closed = array();
+    $this->task_statuses = array();
     foreach($this->tasks as $task) {
       $this->task_points[$task->getPHID()] = 0;
-      $this->task_closed[$task->getPHID()] = 0;
+      $this->task_statuses[$task->getPHID()] = null;
+      $this->task_in_sprint[$task->getPHID()] = 0;
     }
 
     // Now loop through the events and build the data for each day
@@ -137,11 +138,11 @@ class BurndownData {
           break;
         case "task-add":
           // A task was added to the sprint
-          $this->addTask($date, $task_phid);
+          $this->addTaskToSprint($date, $task_phid);
           break;
         case "task-remove":
           // A task was removed from the sprint
-          $this->removeTask($date, $task_phid);
+          $this->removeTaskFromSprint($date, $task_phid);
           break;
         case "close":
           // A task was closed, mark it as done
@@ -211,37 +212,45 @@ class BurndownData {
   /**
    * These handle the relevant math for adding, removing, closing, etc.
    */
-  private function addTask($date, $task_phid) {
+  private function addTaskToSprint($date, $task_phid) {
     $this->dates[$date]->tasks_added_today += 1;
     $this->dates[$date]->points_added_today += $this->task_points[$task_phid];
+    $this->task_in_sprint[$task_phid] = 1;
   }
 
-  private function removeTask($date, $task_phid) {
+  private function removeTaskFromSprint($date, $task_phid) {
     $this->dates[$date]->tasks_added_today -= 1;
     $this->dates[$date]->points_added_today -= $this->task_points[$task_phid];
+    $this->task_in_sprint[$task_phid] = 0;
   }
 
   private function closeTask($date, $task_phid) {
     $this->dates[$date]->tasks_closed_today += 1;
     $this->dates[$date]->points_closed_today += $this->task_points[$task_phid];
-    $this->task_closed[$task_phid] = 1;
+    $this->task_statuses[$task_phid] = 'closed';
   }
 
   private function reopenTask($date, $task_phid) {
     $this->dates[$date]->tasks_closed_today -= 1;
     $this->dates[$date]->points_closed_today -= $this->task_points[$task_phid];
-    $this->task_closed[$task_phid] = 0;
+    $this->task_statuses[$task_phid] = 'open';
   }
 
   private function changePoints($date, $task_phid, $xaction) {
-    $this->dates[$date]->points_added_today +=
-      $xaction->getNewValue() - $xaction->getOldValue();
     $this->task_points[$task_phid] = $xaction->getNewValue();
 
-    // If the task is closed, we also need to adjust the completed points
-    if ($this->task_closed[$task_phid]) {
-      $this->dates[$date]->points_closed_today +=
+    // Only make changes if the task is in the sprint
+    if ($this->task_in_sprint[$task_phid]) {
+
+      // Adjust points for that day
+      $this->dates[$date]->points_added_today +=
         $xaction->getNewValue() - $xaction->getOldValue();
+
+      // If the task is closed, adjust completed points as well
+      if ($this->task_statuses[$task_phid] == 'closed') {
+        $this->dates[$date]->points_closed_today +=
+          $xaction->getNewValue() - $xaction->getOldValue();
+      }
     }
   }
 
@@ -258,7 +267,7 @@ class BurndownData {
     foreach($this->dates as $key => $date)
     {
       if ($key != 'before' AND $key != 'after') {
-        $future = new DateTime($date->getDate()) >= id(new DateTime())->setTime(0,0);
+        $future = new DateTime($date->getDate()) > id(new DateTime())->setTime(0,0);
       }
       $data[] = array(
         $date->getDate(),
@@ -297,9 +306,11 @@ class BurndownData {
       seriesType: "line",
       lineWidth: 3,
       series: {
-        3: {type: "bars"},
-      },
-      colors: ['#f88', '#fb0', '#0df', '#0c0']
+        0: {color: '#f88'},
+        1: {color: '#fb0'},
+        2: {color: '#ccc', lineDashStyle: [8,4]},
+        3: {type: "bars", color: '#0c0'},
+      }
     });
   }
 
