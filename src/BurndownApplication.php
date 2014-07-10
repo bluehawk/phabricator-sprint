@@ -10,6 +10,13 @@ final class BurndownApplication extends PhabricatorApplication {
     return '/burn/';
   }
 
+  public function getIconName() {
+    return 'slowvote';
+  }
+
+  public function getShortDescription() {
+    return 'Build burndowns';
+  }
 
   public function getRoutes() {
     return array(

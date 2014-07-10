@@ -50,7 +50,6 @@ class BurndownData {
 
     if (!$start OR !$end)
     {
-      // TODO make this show a real error
       throw new Exception("This project is not set up for Burndowns, make "
         ."sure it has 'Sprint' in the name, and then edit it to add the sprint "
         ."start and end date.");
@@ -176,7 +175,15 @@ class BurndownData {
       $previous = $current;
     }
 
-    // Compute "Ideal Points remaining" column
+    $this->computeIdealPoints();
+
+  }
+
+  /**
+   * Compute the values for the "Ideal Points" line.
+   */
+  private function computeIdealPoints() {
+
     // This is a cheap hacky way to get business days, and does not account for
     // holidays at all.
     $total_business_days = 0;
@@ -371,23 +378,14 @@ HERE
    * @returns PHUIObjectBoxView
    */
   public function buildTasksTable() {
-    $rows = array();
-    foreach($this->tasks as $task) {
-      $rows[] = array(
-        phutil_tag(
-          'a',
-          array(
-            'href' => '/'.$task->getMonogram(),
-          ),
-          $task->getMonogram().': '.$task->getTitle()),
-        $task->getStatus(),
-      );
-    }
+
+    $rows = $this->buildTasksTree();
 
     $table = id(new AphrontTableView($rows))
       ->setHeaders(
         array(
           pht('Task'),
+          pht('Assigned to'),
           pht('Status'),
         ));
 
@@ -396,6 +394,115 @@ HERE
       ->appendChild($table);
 
     return $box;
+  }
+
+  /**
+   * This builds a tree of the tasks in this project. Due to the acyclic nature
+   * of tasks, we ntake some steps to reduce and call out duplication.
+   *
+   * We ignore any tasks not in this sprint.
+   *
+   * @return array
+   */
+  private function buildTasksTree() {
+    // Shorter constants
+    $DEPENDS_ON = PhabricatorEdgeConfig::TYPE_TASK_DEPENDS_ON_TASK;
+    $DEPENDED_ON = PhabricatorEdgeConfig::TYPE_TASK_DEPENDED_ON_BY_TASK;
+
+    // Load all edges of depends and depended on tasks
+    $edges = id(new PhabricatorEdgeQuery())
+      ->withSourcePHIDs(array_keys($this->tasks))
+      ->withEdgeTypes(array($DEPENDS_ON, $DEPENDED_ON))
+      ->execute();
+
+    // First we build a flat map. Each task is in the map at the root level,
+    // and lists it's parents and children.
+    $map = array();
+    foreach ($this->tasks as $task) {
+      if ($parents = $edges[$task->getPHID()][$DEPENDED_ON]) {
+        foreach ($parents as $parent) {
+          // Make sure this task is in this sprint.
+          if (isset($this->tasks[$parent['dst']]))
+            $map[$task->getPHID()]['parents'][] = $parent['dst'];
+        }
+      }
+
+      if ($children = $edges[$task->getPHID()][$DEPENDS_ON]) {
+        foreach ($children as $child) {
+          // Make sure this task is in this sprint.
+          if (isset($this->tasks[$child['dst']])) {
+            $map[$task->getPHID()]['children'][] = $child['dst'];
+          }
+        }
+      }
+    }
+
+    // We also collect the phids we need to fetch owner information
+    $handle_phids = array();
+    foreach($this->tasks as $task) {
+      // Get the owner (assigned to) phid
+      $handle_phids[$task->getOwnerPHID()] = $task->getOwnerPHID();
+    }
+
+    $handles = id(new PhabricatorHandleQuery())
+      ->setViewer($this->viewer)
+      ->withPHIDs($handle_phids)
+      ->execute();
+
+    // Now we loop through the tasks, and add them to the output
+    $output = array();
+    foreach ($this->tasks as $task) {
+      // If parents is set, it means this task has a parent in this sprint so
+      // skip it, the parent will handle adding this task to the output
+      if (isset($map[$task->getPHID()]['parents'])) {
+        continue;
+      }
+
+      $this->addTaskToTree($output, $task, $map, $handles);
+    }
+
+    return $output;
+  }
+
+  private function addTaskToTree(&$output, $task, &$map, $handles,
+    $depth = 0) {
+    static $included = array();
+
+    // Get the owner object so we can render the owner username/link
+    $owner = $handles[$task->getOwnerPHID()];
+
+    // If this task is already is this tree, this is a repeat.
+    $repeat = isset($included[$task->getPHID()]);
+
+    $depth_indent='';
+    for($i=0; $i<$depth; $i++) {
+      $depth_indent.='&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;';
+    }
+
+    // Build the row
+    $output[] = array(
+      phutil_safe_html($depth_indent.phutil_tag(
+        'a',
+        array(
+          'href' => '/'.$task->getMonogram(),
+          'class' => $task->getStatus() !== 'open'
+            ? 'phui-tag-core-closed'
+            : '',
+        ),
+        $task->getMonogram().': '.$task->getTitle()
+        ).($repeat? '&nbsp;&nbsp;<em title="This task is a child of more than one task in this list. Children are only shown on '.
+        'the first occurance">[Repeat]</em>':'')),
+      $task->getOwnerPHID() ? $owner->renderLink() : 'none assigned',
+      $task->getStatus(),
+    );
+    $included[$task->getPHID()] = $task->getPHID();
+
+    if (isset($map[$task->getPHID()]['children'])) {
+      foreach($map[$task->getPHID()]['children'] as $child) {
+        $child = $this->tasks[$child];
+        $this->addTaskToTree($output, $child, $map, $handles, $depth+1);
+      }
+    }
   }
 
   /**
