@@ -41,6 +41,9 @@ final class SprintTaskStoryPointsField extends ManiphestCustomField
 
     if ($show == null)
     {
+      if (empty($this->getObject()->getProjectPHIDs())) {
+        return $show = false;
+      }
       // Fetch the names from all the Projects associated with this task
       $projects = id(new PhabricatorProject())
         ->loadAllWhere(
