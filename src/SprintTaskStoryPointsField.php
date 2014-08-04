@@ -41,7 +41,8 @@ final class SprintTaskStoryPointsField extends ManiphestCustomField
 
     if ($show == null)
     {
-      if (empty($this->getObject()->getProjectPHIDs())) {
+      $toTest = $this->getObject()->getProjectPHIDs();
+      if (empty($toTest)) {
         return $show = false;
       }
       // Fetch the names from all the Projects associated with this task
