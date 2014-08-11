@@ -18,6 +18,12 @@ final class BurndownApplication extends PhabricatorApplication {
     return 'Build burndowns';
   }
 
+  public function getEventListeners() {
+    return array(
+      new BurndownActionMenuEventListener()
+    );
+  }
+
   public function getRoutes() {
     return array(
       '/burndown/' => array(

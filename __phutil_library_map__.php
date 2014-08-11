@@ -9,6 +9,7 @@
 phutil_register_library_map(array(
   '__library_version__' => 2,
   'class' => array(
+    'BurndownActionMenuEventListener' => 'src/BurndownActionMenuEventListener.php',
     'BurndownApplication' => 'src/BurndownApplication.php',
     'BurndownController' => 'src/BurndownController.php',
     'BurndownData' => 'src/BurndownData.php',
@@ -22,6 +23,7 @@ phutil_register_library_map(array(
   ),
   'function' => array(),
   'xmap' => array(
+    'BurndownActionMenuEventListener' => 'PhabricatorEventListener',
     'BurndownApplication' => 'PhabricatorApplication',
     'BurndownController' => 'PhabricatorController',
     'BurndownException' => 'Exception',
