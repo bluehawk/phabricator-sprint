@@ -601,9 +601,16 @@ HERE
           }
           break;
 
-        case ManiphestTransaction::TYPE_PROJECTS:
-          $old = array_fuse($old);
-          $new = array_fuse($new);
+        // Project's are "core:edge" transactions
+        case PhabricatorTransactions::TYPE_EDGE:
+
+          // We only care about ProjectEdgeType
+          if (idx($xaction->getMetadata(), 'edge:type') !==
+            PhabricatorProjectObjectHasProjectEdgeType::EDGECONST)
+            break;
+
+          $old = ipull($old, 'dst');
+          $new = ipull($new, 'dst');
 
           $in_old_scope = array_intersect_key($scope_phids, $old);
           $in_new_scope = array_intersect_key($scope_phids, $new);
