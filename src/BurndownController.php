@@ -32,12 +32,24 @@ final class BurndownController extends PhabricatorController {
       return new Aphront404Response();
     }
 
-    $data = new BurndownData($project, $viewer);
+    $error_box = false;
+    $burndown_chart = false;
+    $burndown_table = false;
+    $tasks_table = false;
+    $events_table = false;
 
-    $burndown_chart = $data->buildBurnDownChart();
-    $burndown_table = $data->buildBurnDownTable();
-    $tasks_table    = $data->buildTasksTable();
-    $events_table   = $data->buildEventTable();
+    try {
+      $data = new BurndownData($project, $viewer);
+
+      $burndown_chart = $data->buildBurnDownChart();
+      $burndown_table = $data->buildBurnDownTable();
+      $tasks_table    = $data->buildTasksTable();
+      $events_table   = $data->buildEventTable();
+    } catch (BurndownException $e) {
+      $error_box = id(new AphrontErrorView())
+        ->setTitle(pht('Burndown could not be rendered for this project'))
+        ->setErrors(array($e->getMessage()));
+    }
 
     $crumbs = $this->buildApplicationCrumbs();
     $crumbs->addTextCrumb(
@@ -48,6 +60,7 @@ final class BurndownController extends PhabricatorController {
     return $this->buildApplicationPage(
       array(
         $crumbs,
+        $error_box,
         $burndown_chart,
         $burndown_table,
         $tasks_table,

@@ -50,9 +50,9 @@ class BurndownData {
 
     if (!$start OR !$end)
     {
-      throw new Exception("This project is not set up for Burndowns, make "
-        ."sure it has 'Sprint' in the name, and then edit it to add the sprint "
-        ."start and end date.");
+      throw new BurndownException("This project is not set up for Burndowns, "
+        ."make sure it has 'Sprint' in the name, and then edit it to add the "
+        ."sprint start and end date.");
     }
 
     // Load the data for the chart. This approach tries to be simple, but loads
@@ -71,14 +71,16 @@ class BurndownData {
     // Now load *every transaction* for those tasks. This loads all the
     // comments, etc., for every one of the tasks. Again, not very fast, but
     // we largely do not have ways to select this data more narrowly yet.
-    if ($tasks) {
-      $task_phids = mpull($tasks, 'getPHID');
-
-      $xactions = id(new ManiphestTransactionQuery())
-        ->setViewer($viewer)
-        ->withObjectPHIDs($task_phids)
-        ->execute();
+    if (! $tasks) {
+      throw new BurndownException("This project has no tasks.");
     }
+
+    $task_phids = mpull($tasks, 'getPHID');
+
+    $xactions = id(new ManiphestTransactionQuery())
+      ->setViewer($viewer)
+      ->withObjectPHIDs($task_phids)
+      ->execute();
 
     // Examine all the transactions and extract "events" out of them. These are
     // times when a task was opened or closed. Make some effort to also track
@@ -601,7 +603,7 @@ HERE
           }
           break;
 
-        // Project's are "core:edge" transactions
+        // Project changes are "core:edge" transactions
         case PhabricatorTransactions::TYPE_EDGE:
 
           // We only care about ProjectEdgeType
