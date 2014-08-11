@@ -134,6 +134,7 @@ class BurndownData {
         case "create":
           // Will be accounted for by "task-add" when the project is added
           // Bet we still include it so it shows on the Events list
+	  $this->addTaskToSprint($date, $task_phid);
           break;
         case "task-add":
           // A task was added to the sprint
