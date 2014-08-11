@@ -7,7 +7,7 @@ final class BurndownApplication extends PhabricatorApplication {
   }
 
   public function getBaseURI() {
-    return '/burn/';
+    return '/burndown/';
   }
 
   public function getIconName() {
@@ -20,8 +20,9 @@ final class BurndownApplication extends PhabricatorApplication {
 
   public function getRoutes() {
     return array(
-      '/burn/' => array(
-        'burndown/(?P<id>\d+)/' => 'BurndownController',
+      '/burndown/' => array(
+        'list/' => 'BurndownListController',
+        'view/(?P<id>\d+)/' => 'BurndownController',
       ),
     );
   }
