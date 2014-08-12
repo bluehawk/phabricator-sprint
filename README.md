@@ -13,7 +13,7 @@ You can generate some sample data by running:
 bin/lipsum generate BurndownTestDataGenerator
 ```
 
-NOTE that sample data can be created with transactions (like adding a task, changing it's points, etc.) in the future. If you edit a task that has transactions in the future, things get very messed up, as you create new transactions that is not in chronological order.
+NOTE: Sample data can be created with transactions in the future. If you edit a task that has transactions in the future, things get very messed up because you create transactions out of order.
 
 
 ![image](https://cloud.githubusercontent.com/assets/139870/3885291/22334e40-21bf-11e4-909c-ef20666bc2bb.png)
