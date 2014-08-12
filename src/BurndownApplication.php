@@ -7,7 +7,7 @@ final class BurndownApplication extends PhabricatorApplication {
   }
 
   public function getBaseURI() {
-    return '/burndown/';
+    return '/burndown/list/';
   }
 
   public function getIconName() {
