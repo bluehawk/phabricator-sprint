@@ -16,6 +16,7 @@ phutil_register_library_map(array(
     'BurndownDataDate' => 'src/BurndownDataDate.php',
     'BurndownException' => 'src/BurndownException.php',
     'BurndownListController' => 'src/BurndownListController.php',
+    'BurndownTestDataGenerator' => 'src/BurndownTestDataGenerator.php',
     'SprintEndDateField' => 'src/SprintEndDateField.php',
     'SprintProjectCustomField' => 'src/SprintProjectCustomField.php',
     'SprintStartDateField' => 'src/SprintStartDateField.php',
@@ -28,6 +29,7 @@ phutil_register_library_map(array(
     'BurndownController' => 'PhabricatorController',
     'BurndownException' => 'Exception',
     'BurndownListController' => 'PhabricatorController',
+    'BurndownTestDataGenerator' => 'PhabricatorTestDataGenerator',
     'SprintEndDateField' => 'SprintProjectCustomField',
     'SprintProjectCustomField' => array(
       'PhabricatorProjectCustomField',
