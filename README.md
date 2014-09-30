@@ -1,6 +1,9 @@
 phabricator-sprint
 ==================
 
+Copyright (C) 2014 Michael Peters
+Licensed under GNU GPL v3. See LICENSE for full details
+
 Sprints and burndowns in Phabricator
 
 To install, [add this as a library](https://secure.phabricator.com/book/phabricator/article/libraries/) to phabricator.

@@ -1,4 +1,8 @@
 <?php
+/**
+ * Copyright (C) 2014 Michael Peters
+ * Licensed under GNU GPL v3. See LICENSE for full details
+ */
 
 abstract class SprintProjectCustomField extends PhabricatorProjectCustomField
   implements PhabricatorStandardCustomFieldInterface {
