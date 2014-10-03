@@ -118,6 +118,16 @@ class BurndownData {
       $this->task_in_sprint[$task->getPHID()] = 0;
     }
 
+    // This is fairly cludgy. We want anything created before the midnight
+    // following the "start date" to show under "start of sprint", however we
+    // want this to respect the *viewers time zone*. So we format the start date
+    // according to the users settings convert it to date time, set it to
+    // midnight of the next day and then convert it back to unix time stamp.
+    // We then do the same gross process for the end date.
+    $start_date_midnight =id(new DateTime("@".phabricator_format_local_time($start, $viewer, 'U')))
+      ->modify('+1 day')->setTime(0,0)->getTimestamp();
+    $end_date_midnight = id(new DateTime("@".phabricator_format_local_time($end, $viewer, 'U')))
+      ->modify('+1 day')->setTime(0,0)->getTimestamp();
     // Now loop through the events and build the data for each day
     foreach ($this->events as $event) {
 
@@ -127,9 +137,9 @@ class BurndownData {
       $task = $this->tasks[$task_phid];
 
       // Determine which date to attach this data to
-      if ($xaction_date < $start) {
+      if ($xaction_date < $start_date_midnight) {
         $date = 'before';
-      } else if ($xaction_date > $end) {
+      } else if ($xaction_date > $end_date_midnight) {
         $date = 'after';
       } else {
         //$date = id(new DateTime("@".$xaction_date))->format('D M j');
@@ -165,24 +175,22 @@ class BurndownData {
     }
 
     // Now that we have the data for each day, we need to loop over and sum
-    // up the relevant columns
-    $previous = null;
+    // up the relevant columns. Start by making a zeroed "previous" object
+    $previous = (object) array(
+      'tasks_total' => 0,
+      'points_total' => 0,
+      'tasks_remaining' => 0,
+      'points_remaining' => 0,
+    );
     foreach ($this->dates as $current) {
-      $current->tasks_total = $current->tasks_added_today;
-      $current->points_total = $current->points_added_today;
-      $current->tasks_remaining  = $current->tasks_added_today;
-      $current->points_remaining = $current->points_added_today;
-      if ($previous) {
-        $current->tasks_total += $previous->tasks_total;
-        $current->points_total += $previous->points_total;
-        $current->tasks_remaining  += $previous->tasks_remaining - $current->tasks_closed_today;
-        $current->points_remaining += $previous->points_remaining - $current->points_closed_today;
-      }
+      $current->tasks_total      = $previous->tasks_total + $current->tasks_added_today;
+      $current->points_total     = $previous->points_total + $current->points_added_today;
+      $current->tasks_remaining  = $previous->tasks_remaining + $current->tasks_added_today - $current->tasks_closed_today;
+      $current->points_remaining = $previous->points_remaining + $current->points_added_today - $current->points_closed_today;
       $previous = $current;
     }
 
     $this->computeIdealPoints();
-
   }
 
   /**
