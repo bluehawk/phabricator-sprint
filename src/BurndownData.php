@@ -229,24 +229,44 @@ class BurndownData {
     $this->dates[$date]->tasks_added_today += 1;
     $this->dates[$date]->points_added_today += $this->task_points[$task_phid];
     $this->task_in_sprint[$task_phid] = 1;
+
+    // If we are adding an already closed task, increase the tasks and points closed today
+    if ($this->task_statuses[$task_phid] == 'closed') {
+      $this->dates[$date]->tasks_closed_today += 1;
+      $this->dates[$date]->points_closed_today += $this->task_points[$task_phid];
+    }
   }
 
   private function removeTaskFromSprint($date, $task_phid) {
     $this->dates[$date]->tasks_added_today -= 1;
     $this->dates[$date]->points_added_today -= $this->task_points[$task_phid];
     $this->task_in_sprint[$task_phid] = 0;
+
+    // If we are removing an already closed task, decrease the tasks and points closed today
+    if ($this->task_statuses[$task_phid] == 'closed') {
+      $this->dates[$date]->tasks_closed_today -= 1;
+      $this->dates[$date]->points_closed_today -= $this->task_points[$task_phid];
+    }
   }
 
   private function closeTask($date, $task_phid) {
-    $this->dates[$date]->tasks_closed_today += 1;
-    $this->dates[$date]->points_closed_today += $this->task_points[$task_phid];
     $this->task_statuses[$task_phid] = 'closed';
+
+    // Increase tasks and points closed today, but only if this task is currently in the sprint
+    if ($this->task_in_sprint[$task_phid]) {
+      $this->dates[$date]->tasks_closed_today += 1;
+      $this->dates[$date]->points_closed_today += $this->task_points[$task_phid];
+    }
   }
 
   private function reopenTask($date, $task_phid) {
-    $this->dates[$date]->tasks_closed_today -= 1;
-    $this->dates[$date]->points_closed_today -= $this->task_points[$task_phid];
     $this->task_statuses[$task_phid] = 'open';
+
+    // Decrease tasks and points closed today, but only if this task is currently in the sprint
+    if ($this->task_in_sprint[$task_phid]) {
+      $this->dates[$date]->tasks_closed_today -= 1;
+      $this->dates[$date]->points_closed_today -= $this->task_points[$task_phid];
+    }
   }
 
   private function changePoints($date, $task_phid, $xaction) {
