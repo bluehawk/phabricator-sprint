@@ -2,7 +2,7 @@ phabricator-sprint
 ==================
 
 Copyright (C) 2014 Michael Peters
-Licensed under GNU GPL v3. See LICENSE for full details
+Licensed under Apache v2. See LICENSE for full details
 
 Sprints and burndowns in Phabricator
 
