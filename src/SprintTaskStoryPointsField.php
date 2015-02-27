@@ -43,17 +43,27 @@ final class SprintTaskStoryPointsField extends ManiphestCustomField
   public function showField() {
     static $show = null;
 
-    if ($show == null)
-    {
-      $toTest = $this->getObject()->getProjectPHIDs();
-      if (empty($toTest)) {
+    $viewer = $this->getViewer();
+
+    if ($show == null) {
+      $id = $this->getObject()->getID();
+      $task = id(new ManiphestTaskQuery())
+          ->setViewer($viewer)
+	  ->withIds(array($id))
+	  ->needProjectPHIDs(true)
+	  ->executeOne();
+      if (!($task instanceof ManiphestTask)) {
+        return $show = false;
+      }
+      $project_phids = $task->getProjectPHIDs();
+      if (empty($project_phids)) {
         return $show = false;
       }
       // Fetch the names from all the Projects associated with this task
       $projects = id(new PhabricatorProject())
         ->loadAllWhere(
         'phid IN (%Ls)',
-        $this->getObject()->getProjectPHIDs());
+        $project_phids);
       $names = mpull($projects, 'getName');
 
       // Set show to true if one of the Projects contains "Sprint"
