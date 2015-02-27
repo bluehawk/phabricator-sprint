@@ -70,6 +70,7 @@ class BurndownData {
     $tasks = id(new ManiphestTaskQuery())
       ->setViewer($viewer)
       ->withAnyProjects(array($this->project->getPHID()))
+      ->needProjectPHIDs(true)
       ->execute();
 
     // Now load *every transaction* for those tasks. This loads all the
@@ -440,8 +441,8 @@ HERE
    */
   private function buildTasksTree() {
     // Shorter constants
-    $DEPENDS_ON = PhabricatorEdgeConfig::TYPE_TASK_DEPENDS_ON_TASK;
-    $DEPENDED_ON = PhabricatorEdgeConfig::TYPE_TASK_DEPENDED_ON_BY_TASK;
+    $DEPENDS_ON = ManiphestTaskDependsOnTaskEdgeType::EDGECONST;
+    $DEPENDED_ON = ManiphestTaskDependedOnByTaskEdgeType::EDGECONST;
 
     // Load all edges of depends and depended on tasks
     $edges = id(new PhabricatorEdgeQuery())

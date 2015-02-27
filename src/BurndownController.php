@@ -50,7 +50,7 @@ final class BurndownController extends PhabricatorController {
       $tasks_table    = $data->buildTasksTable();
       $events_table   = $data->buildEventTable();
     } catch (BurndownException $e) {
-      $error_box = id(new AphrontErrorView())
+      $error_box = id(new PHUIErrorView())
         ->setTitle(pht('Burndown could not be rendered for this project'))
         ->setErrors(array($e->getMessage()));
     }
