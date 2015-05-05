@@ -69,7 +69,7 @@ class BurndownData {
     // have activity in the project period.
     $tasks = id(new ManiphestTaskQuery())
       ->setViewer($viewer)
-      ->withAnyProjects(array($this->project->getPHID()))
+      ->withEdgeLogicPHIDs(PhabricatorProjectObjectHasProjectEdgeType::EDGECONST, PhabricatorQueryConstraint::OPERATOR_OR, array($this->project->getPHID()))
       ->needProjectPHIDs(true)
       ->execute();
 
