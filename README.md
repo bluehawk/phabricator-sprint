@@ -1,6 +1,8 @@
 phabricator-sprint
 ==================
 
+## This project is not actively maintained, but the wikimedia fork of it is. The wikimedia fork is located at https://github.com/wikimedia/phabricator-extensions-Sprint
+
 Copyright (C) 2014 Michael Peters
 Licensed under Apache v2. See LICENSE for full details
 
