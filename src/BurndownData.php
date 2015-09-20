@@ -421,6 +421,7 @@ HERE
         array(
           pht('Task'),
           pht('Assigned to'),
+          pht('Story points'),
           pht('Status'),
         ));
 
@@ -528,6 +529,7 @@ HERE
         ).($repeat? '&nbsp;&nbsp;<em title="This task is a child of more than one task in this list. Children are only shown on '.
         'the first occurance">[Repeat]</em>':'')),
       $task->getOwnerPHID() ? $owner->renderLink() : 'none assigned',
+      $this->task_points[$task->getPHID()],
       $task->getStatus(),
     );
     $included[$task->getPHID()] = $task->getPHID();
